@@ -1,0 +1,116 @@
+<% const title = 'Add Employee' %>
+<%- include('../layout', { title, user, body: `
+<div class="add-employee-page">
+    <h1>Add New Employee</h1>
+    
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+    
+    <form method="POST" action="/admin/add-employee" class="form" enctype="multipart/form-data">
+        <div class="form-section">
+            <h3>Profile Image</h3>
+            <div class="image-upload-section">
+                <div class="image-preview-container">
+                    <div class="image-preview" id="imagePreview">
+                        <div class="placeholder-avatar">
+                            <span>📷</span>
+                            <p>Click to upload profile image</p>
+                        </div>
+                    </div>
+                    <input type="file" id="profileImage" name="profileImage" accept="image/*" class="image-input">
+                </div>
+                <div class="image-upload-info">
+                    <p><strong>Image Guidelines:</strong></p>
+                    <ul>
+                        <li>Maximum file size: 5MB</li>
+                        <li>Supported formats: JPG, PNG, GIF</li>
+                        <li>Recommended size: 300x300 pixels</li>
+                        <li>Square images work best</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>Basic Information</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="name">Full Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>Contact & Department</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="department">Department:</label>
+                    <input type="text" id="department" name="department">
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Add Employee</button>
+            <a href="/admin/employees" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const imageInput = document.getElementById('profileImage');
+    const imagePreview = document.getElementById('imagePreview');
+    
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                e.target.value = '';
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                e.target.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.innerHTML = \`
+                    <img src="\${e.target.result}" alt="Profile Preview" class="preview-image">
+                    <div class="image-overlay">
+                        <span>Click to change</span>
+                    </div>
+                \`;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Make the preview container clickable
+    imagePreview.addEventListener('click', function() {
+        imageInput.click();
+    });
+});
+</script>
+` }) %>

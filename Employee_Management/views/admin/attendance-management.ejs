@@ -1,0 +1,433 @@
+<% const title = 'Attendance Management' %>
+<%- include('../layout', { title, user, body: `
+<div class="attendance-management-page">
+    <div class="page-header">
+        <h1>Attendance Management</h1>
+        <div class="header-actions">
+            <span class="date-display">Date: ${new Date(today).toLocaleDateString()}</span>
+            <a href="/admin/employees" class="btn btn-secondary">Back to Employees</a>
+        </div>
+    </div>
+    
+    <!-- Success/Error Messages -->
+    ${typeof error !== 'undefined' && error ? `
+        <div class="alert alert-error">
+            ${error}
+        </div>
+    ` : ''}
+    
+    ${typeof success !== 'undefined' && success ? `
+        <div class="alert alert-success">
+            ${success}
+        </div>
+    ` : ''}
+    
+    <!-- Bulk Actions -->
+    <div class="bulk-actions-section">
+        <h2>Quick Actions</h2>
+        <div class="bulk-buttons">
+            <button type="button" class="btn btn-success" onclick="markAllPresent()">Mark All Present</button>
+            <button type="button" class="btn btn-danger" onclick="markAllAbsent()">Mark All Absent</button>
+            <button type="button" class="btn btn-warning" onclick="markSelectedPresent()">Mark Selected Present</button>
+            <button type="button" class="btn btn-warning" onclick="markSelectedAbsent()">Mark Selected Absent</button>
+        </div>
+    </div>
+    
+    <!-- Attendance Table -->
+    <div class="attendance-table-section">
+        <h2>Employee Attendance - ${new Date(today).toLocaleDateString()}</h2>
+        <form id="attendanceForm">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()">
+                                Select All
+                            </th>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Employee Status</th>
+                            <th>Current Attendance</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${employees.map(emp => `
+                            <tr class="employee-row ${emp.attendance_status || 'unmarked'}">
+                                <td>
+                                    <input type="checkbox" name="selectedEmployees" value="${emp.id}" class="employee-checkbox">
+                                </td>
+                                <td class="employee-info">
+                                    ${emp.profile_image ? `
+                                        <img src="/uploads/profiles/${emp.profile_image}" alt="${emp.name}" class="employee-avatar">
+                                    ` : `
+                                        <div class="employee-avatar-placeholder">
+                                            ${emp.name.charAt(0).toUpperCase()}
+                                        </div>
+                                    `}
+                                    <strong>${emp.name}</strong>
+                                </td>
+                                <td>${emp.department || 'N/A'}</td>
+                                <td>
+                                    <span class="status status-${emp.employee_status || 'available'}">
+                                        ${emp.employee_status === 'on-leave' ? '🏖️ On Leave' : '✅ Available'}
+                                    </span>
+                                </td>
+                                <td>
+                                    ${emp.attendance_status ? `
+                                        <span class="status status-${emp.attendance_status}">
+                                            ${emp.attendance_status === 'present' ? '✅ Present' : '❌ Absent'}
+                                        </span>
+                                    ` : `
+                                        <span class="status status-unmarked">⏳ Not Marked</span>
+                                    `}
+                                </td>
+                                <td class="actions-cell">
+                                    <div class="attendance-actions">
+                                        <form method="POST" action="/admin/mark-attendance" style="display: inline;">
+                                            <input type="hidden" name="userId" value="${emp.id}">
+                                            <input type="hidden" name="date" value="${today}">
+                                            <input type="hidden" name="status" value="present">
+                                            <button type="submit" class="btn btn-sm btn-success ${emp.attendance_status === 'present' ? 'active' : ''}"
+                                                    ${emp.employee_status === 'on-leave' ? 'disabled title="Employee is on leave"' : ''}>
+                                                ✅ Present
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="/admin/mark-attendance" style="display: inline;">
+                                            <input type="hidden" name="userId" value="${emp.id}">
+                                            <input type="hidden" name="date" value="${today}">
+                                            <input type="hidden" name="status" value="absent">
+                                            <button type="submit" class="btn btn-sm btn-danger ${emp.attendance_status === 'absent' ? 'active' : ''}">
+                                                ❌ Absent
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                
+                ${employees.length === 0 ? '<p class="no-data">No employees found.</p>' : ''}
+            </div>
+        </form>
+    </div>
+    
+    <!-- Attendance Summary -->
+    <div class="attendance-summary">
+        <h2>Today's Summary</h2>
+        <div class="summary-stats">
+            <div class="stat-card present">
+                <div class="stat-number" id="presentCount">${employees.filter(emp => emp.attendance_status === 'present').length}</div>
+                <div class="stat-label">Present</div>
+            </div>
+            <div class="stat-card absent">
+                <div class="stat-number" id="absentCount">${employees.filter(emp => emp.attendance_status === 'absent').length}</div>
+                <div class="stat-label">Absent</div>
+            </div>
+            <div class="stat-card unmarked">
+                <div class="stat-number" id="unmarkedCount">${employees.filter(emp => !emp.attendance_status).length}</div>
+                <div class="stat-label">Not Marked</div>
+            </div>
+            <div class="stat-card on-leave">
+                <div class="stat-number" id="onLeaveCount">${employees.filter(emp => emp.employee_status === 'on-leave').length}</div>
+                <div class="stat-label">On Leave</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.attendance-management-page {
+    padding: 1rem;
+}
+
+.date-display {
+    font-weight: bold;
+    color: #2c3e50;
+    background: #ecf0f1;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+}
+
+.bulk-actions-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.attendance-table-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.employee-row.present {
+    background-color: #d4edda;
+}
+
+.employee-row.absent {
+    background-color: #f8d7da;
+}
+
+.employee-row.unmarked {
+    background-color: #fff3cd;
+}
+
+.employee-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.attendance-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn.active {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.status-unmarked {
+    background: #ffc107;
+    color: #212529;
+}
+
+.status-on-leave {
+    background: #17a2b8;
+    color: white;
+}
+
+.attendance-summary {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-card {
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    color: white;
+}
+
+.stat-card.present {
+    background: #28a745;
+}
+
+.stat-card.absent {
+    background: #dc3545;
+}
+
+.stat-card.unmarked {
+    background: #ffc107;
+    color: #212529;
+}
+
+.stat-card.on-leave {
+    background: #17a2b8;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.alert {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+</style>
+
+<script>
+function toggleAllCheckboxes() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.employee-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+function getSelectedEmployees() {
+    const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function markAllPresent() {
+    if (confirm('Mark all employees as present for today?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/bulk-attendance';
+        
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'mark-all-present';
+        form.appendChild(actionInput);
+        
+        const dateInput = document.createElement('input');
+        dateInput.type = 'hidden';
+        dateInput.name = 'date';
+        dateInput.value = '${today}';
+        form.appendChild(dateInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function markAllAbsent() {
+    if (confirm('Mark all employees as absent for today?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/bulk-attendance';
+        
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'mark-all-absent';
+        form.appendChild(actionInput);
+        
+        const dateInput = document.createElement('input');
+        dateInput.type = 'hidden';
+        dateInput.name = 'date';
+        dateInput.value = '${today}';
+        form.appendChild(dateInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function markSelectedPresent() {
+    const selected = getSelectedEmployees();
+    if (selected.length === 0) {
+        alert('Please select at least one employee.');
+        return;
+    }
+    
+    if (confirm(\`Mark \${selected.length} selected employee(s) as present?\`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/bulk-attendance';
+        
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'mark-selected-present';
+        form.appendChild(actionInput);
+        
+        const dateInput = document.createElement('input');
+        dateInput.type = 'hidden';
+        dateInput.name = 'date';
+        dateInput.value = '${today}';
+        form.appendChild(dateInput);
+        
+        selected.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'selectedEmployees';
+            input.value = id;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function markSelectedAbsent() {
+    const selected = getSelectedEmployees();
+    if (selected.length === 0) {
+        alert('Please select at least one employee.');
+        return;
+    }
+    
+    if (confirm(\`Mark \${selected.length} selected employee(s) as absent?\`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/bulk-attendance';
+        
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'mark-selected-absent';
+        form.appendChild(actionInput);
+        
+        const dateInput = document.createElement('input');
+        dateInput.type = 'hidden';
+        dateInput.name = 'date';
+        dateInput.value = '${today}';
+        form.appendChild(dateInput);
+        
+        selected.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'selectedEmployees';
+            input.value = id;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Auto-hide alerts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            setTimeout(() => {
+                alert.remove();
+            }, 300);
+        }, 5000);
+    });
+});
+</script>
+` }) %>

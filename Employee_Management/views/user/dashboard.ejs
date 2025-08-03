@@ -1,0 +1,179 @@
+<% const title = 'User Dashboard' %>
+<%- include('../layout', { title, user, body: `
+<div class="dashboard">
+    <h1>Welcome, ${user.name}</h1>
+    
+    <!-- Success/Error Messages -->
+    ${typeof error !== 'undefined' && error ? `
+        <div class="alert alert-error">
+            ${error}
+        </div>
+    ` : ''}
+    
+    ${typeof success !== 'undefined' && success ? `
+        <div class="alert alert-success">
+            ${success}
+        </div>
+    ` : ''}
+    
+    <!-- Current Leave Status -->
+    ${typeof currentLeave !== 'undefined' && currentLeave ? `
+        <div class="current-leave-status">
+            <div class="alert alert-info">
+                <h3>🏖️ You are currently on leave</h3>
+                <p><strong>Leave Period:</strong> ${new Date(currentLeave.start_date).toLocaleDateString()} - ${new Date(currentLeave.end_date).toLocaleDateString()}</p>
+                <p><strong>Reason:</strong> ${currentLeave.reason}</p>
+                <p><strong>Days Remaining:</strong> ${Math.max(0, Math.ceil((new Date(currentLeave.end_date) - new Date()) / (1000 * 60 * 60 * 24)))} days</p>
+                
+                <form method="POST" action="/user/mark-return" style="margin-top: 1rem;">
+                    <input type="hidden" name="applicationId" value="${currentLeave.id}">
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to mark your return from leave?')">
+                        🏠 Mark My Return
+                    </button>
+                </form>
+            </div>
+        </div>
+    ` : ''}
+    
+    <div class="dashboard-grid">
+        <div class="dashboard-section">
+            <h2>Recent Attendance</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${typeof attendance !== 'undefined' && attendance && attendance.length > 0 ? attendance.map(att => `
+                            <tr>
+                                <td>${new Date(att.date).toLocaleDateString()}</td>
+                                <td><span class="status status-${att.status}">${att.status}</span></td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="2" class="no-data">No attendance records found.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+            <a href="/user/attendance" class="btn btn-primary">View All Attendance</a>
+        </div>
+        
+        <div class="dashboard-section">
+            <h2>Recent Leave Applications</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${typeof leaves !== 'undefined' && leaves && leaves.length > 0 ? leaves.map(leave => {
+                            const today = new Date();
+                            const startDate = new Date(leave.start_date);
+                            const endDate = new Date(leave.end_date);
+                            const isCurrentlyOnLeave = leave.status === 'approved' && 
+                                                     startDate <= today && 
+                                                     endDate >= today && 
+                                                     (leave.absence_status === 'on-leave' || leave.absence_status === null);
+                            
+                            return `
+                            <tr>
+                                <td>${startDate.toLocaleDateString()}</td>
+                                <td>${endDate.toLocaleDateString()}</td>
+                                <td>
+                                    <span class="status status-${leave.status}">${leave.status}</span>
+                                    ${leave.absence_status ? `<br><small class="status status-${leave.absence_status}">${leave.absence_status}</small>` : ''}
+                                </td>
+                                <td>
+                                    ${isCurrentlyOnLeave ? `
+                                        <form method="POST" action="/user/mark-return" style="display: inline;">
+                                            <input type="hidden" name="applicationId" value="${leave.id}">
+                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Are you sure you want to mark your return from leave?')">
+                                                🏠 Mark Return
+                                            </button>
+                                        </form>
+                                    ` : leave.absence_status === 'returned' ? `
+                                        <span class="text-success">✓ Returned</span>
+                                    ` : leave.status === 'pending' ? `
+                                        <span class="text-warning">⏳ Pending</span>
+                                    ` : leave.status === 'rejected' ? `
+                                        <span class="text-danger">✗ Rejected</span>
+                                    ` : ''}
+                                </td>
+                            </tr>
+                            `;
+                        }).join('') : '<tr><td colspan="4" class="no-data">No leave applications found.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+            <a href="/user/leave" class="btn btn-primary">Manage Leave</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.current-leave-status {
+    margin: 1.5rem 0;
+}
+
+.alert {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+.text-success {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.text-warning {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+.text-danger {
+    color: #dc3545;
+    font-weight: bold;
+}
+</style>
+
+<script>
+// Auto-hide alerts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            setTimeout(() => {
+                alert.remove();
+            }, 300);
+        }, 5000);
+    });
+});
+</script>
+` }) %>

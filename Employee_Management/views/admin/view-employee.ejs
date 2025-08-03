@@ -1,0 +1,141 @@
+<% const title = 'Employee Details' %>
+<%- include('../layout', { title, user, body: `
+<div class="view-employee-page">
+    <div class="page-header">
+        <h1>Employee Details</h1>
+        <div class="header-actions">
+            <a href="/admin/employees" class="btn btn-secondary">Back to Employees</a>
+            <a href="/admin/edit-employee/${employee.id}" class="btn btn-warning">Edit Employee</a>
+        </div>
+    </div>
+    
+    <div class="employee-details-grid">
+        <!-- Employee Information -->
+        <div class="detail-card">
+            <h2>Personal Information</h2>
+            <div class="employee-profile-section">
+                <div class="employee-profile-image">
+                    ${employee.profile_image ? `
+                        <img src="/uploads/profiles/${employee.profile_image}" alt="${employee.name}" class="profile-image-large">
+                    ` : `
+                        <div class="profile-placeholder-large">
+                            ${employee.name.charAt(0).toUpperCase()}
+                        </div>
+                    `}
+                </div>
+                <div class="employee-profile-info">
+                    <h3>${employee.name}</h3>
+                    <p class="employee-role">Employee</p>
+                    <p class="employee-department">${employee.department || 'No Department'}</p>
+                </div>
+            </div>
+            
+            <div class="detail-item">
+                <label>Employee ID:</label>
+                <span>${employee.id}</span>
+            </div>
+            <div class="detail-item">
+                <label>Username:</label>
+                <span>${employee.username}</span>
+            </div>
+            <div class="detail-item">
+                <label>Full Name:</label>
+                <span>${employee.name}</span>
+            </div>
+            <div class="detail-item">
+                <label>Email:</label>
+                <span>${employee.email || 'Not provided'}</span>
+            </div>
+            <div class="detail-item">
+                <label>Department:</label>
+                <span>${employee.department || 'Not assigned'}</span>
+            </div>
+            <div class="detail-item">
+                <label>Joined Date:</label>
+                <span>${new Date(employee.created_at).toLocaleDateString()}</span>
+            </div>
+        </div>
+        
+        <!-- Attendance Summary -->
+        <div class="detail-card">
+            <h2>Attendance Summary</h2>
+            <div class="stats-mini-grid">
+                <div class="mini-stat">
+                    <div class="mini-stat-number">${attendanceSummary.total_days}</div>
+                    <div class="mini-stat-label">Total Days</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="mini-stat-number present">${attendanceSummary.present_days}</div>
+                    <div class="mini-stat-label">Present</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="mini-stat-number absent">${attendanceSummary.absent_days}</div>
+                    <div class="mini-stat-label">Absent</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="mini-stat-number">${attendanceSummary.total_days > 0 ? Math.round((attendanceSummary.present_days / attendanceSummary.total_days) * 100) : 0}%</div>
+                    <div class="mini-stat-label">Attendance Rate</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Attendance -->
+    <div class="detail-section">
+        <h2>Recent Attendance (Last 10 Days)</h2>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Marked At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${recentAttendance.map(att => `
+                        <tr>
+                            <td>${new Date(att.date).toLocaleDateString()}</td>
+                            <td><span class="status status-${att.status}">${att.status}</span></td>
+                            <td>${new Date(att.created_at).toLocaleString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            ${recentAttendance.length === 0 ? '<p class="no-data">No attendance records found.</p>' : ''}
+        </div>
+    </div>
+    
+    <!-- Leave Applications -->
+    <div class="detail-section">
+        <h2>Leave Applications</h2>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Applied On</th>
+                        <th>Admin Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${leaveApplications.map(app => `
+                        <tr>
+                            <td>${new Date(app.start_date).toLocaleDateString()}</td>
+                            <td>${new Date(app.end_date).toLocaleDateString()}</td>
+                            <td>${app.reason}</td>
+                            <td><span class="status status-${app.status}">${app.status}</span></td>
+                            <td>${new Date(app.created_at).toLocaleDateString()}</td>
+                            <td>${app.admin_comment || 'N/A'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            ${leaveApplications.length === 0 ? '<p class="no-data">No leave applications found.</p>' : ''}
+        </div>
+    </div>
+</div>
+` }) %>

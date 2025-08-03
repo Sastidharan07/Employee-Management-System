@@ -1,0 +1,165 @@
+<% const title = 'Admin Dashboard' %>
+<%- include('../layout', { title, user, body: `
+<div class="dashboard">
+    <h1>Admin Dashboard</h1>
+    
+    <!-- Success/Error Messages -->
+    ${typeof error !== 'undefined' && error ? `
+        <div class="alert alert-error">
+            ${error}
+        </div>
+    ` : ''}
+    
+    ${typeof success !== 'undefined' && success ? `
+        <div class="alert alert-success">
+            ${success}
+        </div>
+    ` : ''}
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Employees</h3>
+            <div class="stat-number">${stats.total_employees}</div>
+        </div>
+        
+        <div class="stat-card">
+            <h3>Pending Leave Applications</h3>
+            <div class="stat-number">${stats.pending_leaves}</div>
+        </div>
+        
+        <div class="stat-card">
+            <h3>Today's Attendance</h3>
+            <div class="stat-number">${stats.today_attendance}</div>
+        </div>
+        
+        <div class="stat-card">
+            <h3>Currently On Leave</h3>
+            <div class="stat-number">${stats.current_absentees}</div>
+        </div>
+    </div>
+    
+    <!-- Current Absentees Section -->
+    ${currentAbsentees && currentAbsentees.length > 0 ? `
+        <div class="current-absentees-section">
+            <h2>🏖️ Currently On Leave</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Leave Period</th>
+                            <th>Days Remaining</th>
+                            <th>Reason</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${currentAbsentees.map(leave => {
+                            const endDate = new Date(leave.end_date);
+                            const today = new Date();
+                            const daysRemaining = Math.max(0, Math.ceil((endDate - today) / (1000 * 60 * 60 * 24)));
+                            
+                            return `
+                            <tr>
+                                <td><strong>${leave.employee_name}</strong></td>
+                                <td>${leave.department || 'N/A'}</td>
+                                <td>
+                                    ${new Date(leave.start_date).toLocaleDateString()} - 
+                                    ${new Date(leave.end_date).toLocaleDateString()}
+                                </td>
+                                <td>
+                                    <span class="days-remaining ${daysRemaining <= 2 ? 'urgent' : ''}">
+                                        ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}
+                                    </span>
+                                </td>
+                                <td title="${leave.reason}">
+                                    ${leave.reason.length > 30 ? leave.reason.substring(0, 30) + '...' : leave.reason}
+                                </td>
+                                <td>
+                                    <form method="POST" action="/admin/mark-return" style="display: inline;">
+                                        <input type="hidden" name="applicationId" value="${leave.id}">
+                                        <input type="hidden" name="userId" value="${leave.user_id}">
+                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                onclick="return confirm('Mark ${leave.employee_name} as returned from leave?')">
+                                            Mark Return
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    ` : ''}
+    
+    <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="action-buttons">
+            <a href="/admin/add-employee" class="btn btn-primary">Add New Employee</a>
+            <a href="/admin/employees" class="btn btn-secondary">Manage Employees</a>
+            <a href="/admin/leave-applications" class="btn btn-secondary">Review Leave Applications</a>
+            <a href="/admin/absence-management" class="btn btn-info">Absence Management</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.current-absentees-section {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #17a2b8;
+}
+
+.days-remaining {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background: #d4edda;
+    color: #155724;
+    font-weight: bold;
+}
+
+.days-remaining.urgent {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.alert {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+</style>
+
+<script>
+// Auto-hide alerts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            setTimeout(() => {
+                alert.remove();
+            }, 300);
+        }, 5000);
+    });
+});
+</script>
+` }) %>

@@ -1,0 +1,168 @@
+<% const title = 'Edit Employee' %>
+<%- include('../layout', { title, user, body: `
+<div class="edit-employee-page">
+    <div class="page-header">
+        <h1>Edit Employee</h1>
+        <a href="/admin/employees" class="btn btn-secondary">Back to Employees</a>
+    </div>
+    
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+    
+    <div class="form-container">
+        <form method="POST" action="/admin/edit-employee/${employee.id}" class="form" enctype="multipart/form-data">
+            <div class="form-section">
+                <h3>Profile Image</h3>
+                <div class="image-upload-section">
+                    <div class="image-preview-container">
+                        <div class="image-preview" id="imagePreview">
+                            ${employee.profile_image ? `
+                                <img src="/uploads/profiles/${employee.profile_image}" alt="Current Profile" class="preview-image">
+                                <div class="image-overlay">
+                                    <span>Click to change</span>
+                                </div>
+                            ` : `
+                                <div class="placeholder-avatar">
+                                    <span>${employee.name.charAt(0).toUpperCase()}</span>
+                                    <p>Click to upload image</p>
+                                </div>
+                            `}
+                        </div>
+                        <input type="file" id="profileImage" name="profileImage" accept="image/*" class="image-input">
+                    </div>
+                    <div class="image-actions">
+                        ${employee.profile_image ? `
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="removeImage" value="true">
+                                Remove current image
+                            </label>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>Basic Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="username">Username:</label>
+                        <input type="text" id="username" name="username" value="${employee.username}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="name">Full Name:</label>
+                        <input type="text" id="name" name="name" value="${employee.name}" required>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>Contact & Department</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" value="${employee.email || ''}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="department">Department:</label>
+                        <input type="text" id="department" name="department" value="${employee.department || ''}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>Password (Optional)</h3>
+                <div class="form-group">
+                    <label for="password">New Password (leave blank to keep current):</label>
+                    <input type="password" id="password" name="password" placeholder="Enter new password or leave blank">
+                    <small class="form-help">Only enter a password if you want to change it</small>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Employee</button>
+                <a href="/admin/employees" class="btn btn-secondary">Cancel</a>
+                <a href="/admin/view-employee/${employee.id}" class="btn btn-info">View Details</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const imageInput = document.getElementById('profileImage');
+    const imagePreview = document.getElementById('imagePreview');
+    const removeImageCheckbox = document.querySelector('input[name="removeImage"]');
+    
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                e.target.value = '';
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                e.target.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.innerHTML = \`
+                    <img src="\${e.target.result}" alt="Profile Preview" class="preview-image">
+                    <div class="image-overlay">
+                        <span>New image selected</span>
+                    </div>
+                \`;
+                
+                // Uncheck remove image if new image is selected
+                if (removeImageCheckbox) {
+                    removeImageCheckbox.checked = false;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Handle remove image checkbox
+    if (removeImageCheckbox) {
+        removeImageCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                imagePreview.innerHTML = \`
+                    <div class="placeholder-avatar">
+                        <span>${employee.name.charAt(0).toUpperCase()}</span>
+                        <p>Image will be removed</p>
+                    </div>
+                \`;
+                imageInput.value = '';
+            } else {
+                // Restore original image
+                imagePreview.innerHTML = \`
+                    ${employee.profile_image ? `
+                        <img src="/uploads/profiles/${employee.profile_image}" alt="Current Profile" class="preview-image">
+                        <div class="image-overlay">
+                            <span>Click to change</span>
+                        </div>
+                    ` : `
+                        <div class="placeholder-avatar">
+                            <span>${employee.name.charAt(0).toUpperCase()}</span>
+                            <p>Click to upload image</p>
+                        </div>
+                    `}
+                \`;
+            }
+        });
+    }
+    
+    // Make the preview container clickable
+    imagePreview.addEventListener('click', function() {
+        imageInput.click();
+    });
+});
+</script>
+` }) %>

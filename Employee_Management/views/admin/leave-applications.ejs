@@ -1,0 +1,200 @@
+<% const title = 'Leave Applications' %>
+<%- include('../layout', { title, user, body: `
+<div class="leave-applications-page">
+    <div class="page-header">
+        <h1>Leave Applications</h1>
+        <div class="header-actions">
+            <a href="/admin/absence-management" class="btn btn-info">Absence Management</a>
+        </div>
+    </div>
+    
+    <!-- Success/Error Messages -->
+    ${typeof error !== 'undefined' && error ? `
+        <div class="alert alert-error">
+            ${error}
+        </div>
+    ` : ''}
+    
+    ${typeof success !== 'undefined' && success ? `
+        <div class="alert alert-success">
+            ${success}
+        </div>
+    ` : ''}
+    
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Leave Period</th>
+                    <th>Duration</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Applied On</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${applications.map(app => {
+                    const startDate = new Date(app.start_date);
+                    const endDate = new Date(app.end_date);
+                    const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                    const today = new Date();
+                    const isCurrentlyOnLeave = app.status === 'approved' && 
+                                             startDate <= today && 
+                                             endDate >= today && 
+                                             (app.absence_status === 'on-leave' || app.absence_status === null);
+                    
+                    return `
+                    <tr class="application-row ${app.status}">
+                        <td><strong>${app.employee_name}</strong></td>
+                        <td>
+                            ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}
+                            ${isCurrentlyOnLeave ? '<br><small class="status-indicator on-leave">🏖️ Currently on leave</small>' : ''}
+                        </td>
+                        <td>${duration} day${duration > 1 ? 's' : ''}</td>
+                        <td title="${app.reason}">
+                            ${app.reason.length > 50 ? app.reason.substring(0, 50) + '...' : app.reason}
+                        </td>
+                        <td>
+                            <span class="status status-${app.status}">${app.status}</span>
+                            ${app.absence_status ? `<br><small class="status status-${app.absence_status}">${app.absence_status}</small>` : ''}
+                        </td>
+                        <td>${new Date(app.created_at).toLocaleDateString()}</td>
+                        <td class="actions-cell">
+                            ${app.status === 'pending' ? `
+                                <div class="action-buttons">
+                                    <form method="POST" action="/admin/leave-action" style="display: inline;">
+                                        <input type="hidden" name="applicationId" value="${app.id}">
+                                        <input type="hidden" name="action" value="approved">
+                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                onclick="return confirm('Approve leave application for ${app.employee_name}?')">
+                                            ✓ Approve
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="/admin/leave-action" style="display: inline;">
+                                        <input type="hidden" name="applicationId" value="${app.id}">
+                                        <input type="hidden" name="action" value="rejected">
+                                        <textarea name="comment" placeholder="Reason for rejection (optional)" 
+                                                style="display: none;" class="rejection-comment"></textarea>
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                onclick="handleRejection(this, '${app.employee_name}')">
+                                            ✗ Reject
+                                        </button>
+                                    </form>
+                                </div>
+                            ` : isCurrentlyOnLeave ? `
+                                <form method="POST" action="/admin/mark-return" style="display: inline;">
+                                    <input type="hidden" name="applicationId" value="${app.id}">
+                                    <input type="hidden" name="userId" value="${app.user_id}">
+                                    <button type="submit" class="btn btn-sm btn-warning" 
+                                            onclick="return confirm('Mark ${app.employee_name} as returned from leave?')">
+                                        🏠 Mark Return
+                                    </button>
+                                </form>
+                            ` : app.status === 'approved' ? `
+                                <span class="text-success">✓ Approved</span>
+                                ${app.absence_status === 'returned' ? '<br><small>✓ Returned</small>' : ''}
+                            ` : `
+                                <span class="text-danger">✗ Rejected</span>
+                                ${app.admin_comment ? `<br><small title="${app.admin_comment}">💬 Comment</small>` : ''}
+                            `}
+                        </td>
+                    </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+        
+        ${applications.length === 0 ? '<p class="no-data">No leave applications found.</p>' : ''}
+    </div>
+</div>
+
+<style>
+.application-row.pending {
+    background-color: #fff3cd;
+}
+
+.application-row.approved {
+    background-color: #d4edda;
+}
+
+.application-row.rejected {
+    background-color: #f8d7da;
+}
+
+.status-indicator.on-leave {
+    color: #856404;
+    font-weight: bold;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.rejection-comment {
+    width: 200px;
+    height: 60px;
+    margin: 0.5rem 0;
+    padding: 0.25rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.alert {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+</style>
+
+<script>
+function handleRejection(button, employeeName) {
+    const form = button.closest('form');
+    const commentTextarea = form.querySelector('.rejection-comment');
+    
+    if (commentTextarea.style.display === 'none') {
+        commentTextarea.style.display = 'block';
+        button.textContent = '✗ Confirm Reject';
+        button.onclick = () => {
+            if (confirm(\`Reject leave application for \${employeeName}?\`)) {
+                form.submit();
+            }
+        };
+    } else {
+        if (confirm(\`Reject leave application for \${employeeName}?\`)) {
+            form.submit();
+        }
+    }
+}
+
+// Auto-hide alerts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            setTimeout(() => {
+                alert.remove();
+            }, 300);
+        }, 5000);
+    });
+});
+</script>
+` }) %>

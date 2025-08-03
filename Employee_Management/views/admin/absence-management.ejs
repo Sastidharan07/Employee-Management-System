@@ -1,0 +1,319 @@
+<% const title = 'Absence Management' %>
+<%- include('../layout', { title, user, body: `
+<div class="absence-management-page">
+    <div class="page-header">
+        <h1>Absence Management</h1>
+        <div class="header-actions">
+            <a href="/admin/leave-applications" class="btn btn-info">Leave Applications</a>
+        </div>
+    </div>
+    
+    <!-- Success/Error Messages -->
+    ${typeof error !== 'undefined' && error ? `
+        <div class="alert alert-error">
+            ${error}
+        </div>
+    ` : ''}
+    
+    ${typeof success !== 'undefined' && success ? `
+        <div class="alert alert-success">
+            ${success}
+        </div>
+    ` : ''}
+    
+    <!-- Current Absentees Section -->
+    <div class="current-absentees-section">
+        <h2>🏖️ Currently On Leave (${currentAbsentees ? currentAbsentees.length : 0})</h2>
+        
+        ${currentAbsentees && currentAbsentees.length > 0 ? `
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Leave Period</th>
+                            <th>Days Remaining</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${currentAbsentees.map(leave => {
+                            const startDate = new Date(leave.start_date);
+                            const endDate = new Date(leave.end_date);
+                            const today = new Date();
+                            const daysRemaining = Math.max(0, Math.ceil((endDate - today) / (1000 * 60 * 60 * 24)));
+                            const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                            
+                            return `
+                            <tr>
+                                <td><strong>${leave.employee_name}</strong></td>
+                                <td>${leave.department || 'N/A'}</td>
+                                <td>
+                                    ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}
+                                    <br><small>${totalDays} day${totalDays !== 1 ? 's' : ''} total</small>
+                                </td>
+                                <td>
+                                    <span class="days-remaining ${daysRemaining <= 2 ? 'urgent' : daysRemaining <= 5 ? 'warning' : ''}">
+                                        ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}
+                                        ${daysRemaining === 0 ? ' (Due back today)' : ''}
+                                    </span>
+                                </td>
+                                <td title="${leave.reason}">
+                                    ${leave.reason.length > 40 ? leave.reason.substring(0, 40) + '...' : leave.reason}
+                                </td>
+                                <td>
+                                    <span class="status status-on-leave">On Leave</span>
+                                    ${leave.absence_status ? `<br><small class="status status-${leave.absence_status}">${leave.absence_status}</small>` : ''}
+                                </td>
+                                <td>
+                                    <form method="POST" action="/admin/mark-return" style="display: inline;">
+                                        <input type="hidden" name="applicationId" value="${leave.id}">
+                                        <input type="hidden" name="userId" value="${leave.user_id}">
+                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                onclick="return confirm('Mark ${leave.employee_name} as returned from leave?')">
+                                            🏠 Mark Return
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        ` : `
+            <div class="no-data">
+                <p>No employees are currently on leave.</p>
+            </div>
+        `}
+    </div>
+    
+    <!-- Absence History Section -->
+    <div class="absence-history-section">
+        <h2>📊 Recent Absence History</h2>
+        
+        ${absenceHistory && absenceHistory.length > 0 ? `
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Leave Period</th>
+                            <th>Duration</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Return Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${absenceHistory.slice(0, 20).map(leave => {
+                            const startDate = new Date(leave.start_date);
+                            const endDate = new Date(leave.end_date);
+                            const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                            const today = new Date();
+                            const isCurrentlyOnLeave = startDate <= today && endDate >= today && 
+                                                     (leave.absence_status === 'on-leave' || leave.absence_status === null);
+                            
+                            return `
+                            <tr class="${isCurrentlyOnLeave ? 'current-leave' : leave.absence_status === 'returned' ? 'returned' : ''}">
+                                <td><strong>${leave.employee_name}</strong></td>
+                                <td>${leave.department || 'N/A'}</td>
+                                <td>
+                                    ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}
+                                </td>
+                                <td>${duration} day${duration !== 1 ? 's' : ''}</td>
+                                <td title="${leave.reason}">
+                                    ${leave.reason.length > 30 ? leave.reason.substring(0, 30) + '...' : leave.reason}
+                                </td>
+                                <td>
+                                    ${isCurrentlyOnLeave ? `
+                                        <span class="status status-on-leave">Currently On Leave</span>
+                                    ` : leave.absence_status === 'returned' ? `
+                                        <span class="status status-returned">Returned</span>
+                                    ` : endDate < today ? `
+                                        <span class="status status-completed">Completed</span>
+                                    ` : `
+                                        <span class="status status-approved">Approved</span>
+                                    `}
+                                </td>
+                                <td>
+                                    ${leave.actual_return_date ? 
+                                        new Date(leave.actual_return_date).toLocaleDateString() : 
+                                        isCurrentlyOnLeave ? 'Still on leave' : 'N/A'
+                                    }
+                                </td>
+                            </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        ` : `
+            <div class="no-data">
+                <p>No absence history found.</p>
+            </div>
+        `}
+    </div>
+    
+    <!-- Statistics Section -->
+    ${stats ? `
+        <div class="absence-stats-section">
+            <h2>📈 Monthly Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>This Month's Absences</h3>
+                    <div class="stat-number">${stats.monthly_absences || 0}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Average Duration</h3>
+                    <div class="stat-number">${stats.avg_duration || 0} days</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Most Common Reason</h3>
+                    <div class="stat-text">${stats.common_reason || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+    ` : ''}
+</div>
+
+<style>
+.absence-management-page {
+    padding: 1rem;
+}
+
+.current-absentees-section {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #17a2b8;
+}
+
+.absence-history-section {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.absence-stats-section {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.days-remaining {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background: #d4edda;
+    color: #155724;
+    font-weight: bold;
+}
+
+.days-remaining.warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.days-remaining.urgent {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.current-leave {
+    background-color: #fff3cd;
+}
+
+.returned {
+    background-color: #d4edda;
+}
+
+.status-on-leave {
+    background: #17a2b8;
+    color: white;
+}
+
+.status-returned {
+    background: #28a745;
+    color: white;
+}
+
+.status-completed {
+    background: #6c757d;
+    color: white;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.stat-text {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.alert {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+</style>
+
+<script>
+// Auto-hide alerts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            setTimeout(() => {
+                alert.remove();
+            }, 300);
+        }, 5000);
+    });
+});
+
+// Auto-refresh page every 5 minutes to keep data current
+setTimeout(() => {
+    window.location.reload();
+}, 5 * 60 * 1000);
+</script>
+` }) %>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title || 'Employee Management System' %></title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <% if (user && user.userId) { %>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h2>EMS</h2>
+            </div>
+            <div class="nav-menu">
+                <% if (user.role === 'admin') { %>
+                    <a href="/admin/dashboard" class="nav-link">Dashboard</a>
+                    <a href="/admin/employees" class="nav-link">Employees</a>
+                    <a href="/admin/attendance-management" class="nav-link">Attendance</a>
+                    <a href="/admin/leave-applications" class="nav-link">Leave Applications</a>
+                <% } else { %>
+                    <a href="/user/dashboard" class="nav-link">Dashboard</a>
+                    <a href="/user/attendance" class="nav-link">Attendance</a>
+                    <a href="/user/leave" class="nav-link">Leave</a>
+                    <a href="/user/profile" class="nav-link">Profile</a>
+                <% } %>
+                <div class="nav-user">
+                    <span>Welcome, <%= user.name %></span>
+                    <form method="POST" action="/logout" style="display: inline;">
+                        <button type="submit" class="btn btn-secondary">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <% } %>
+    
+    <main class="main-content">
+        <%- body %>
+    </main>
+</body>
+</html>

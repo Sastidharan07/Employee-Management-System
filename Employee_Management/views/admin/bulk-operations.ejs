@@ -1,0 +1,98 @@
+<% const title = 'Bulk Operations' %>
+<%- include('../layout', { title, user, body: `
+<div class="bulk-operations-page">
+    <div class="page-header">
+        <h1>Bulk Operations</h1>
+        <a href="/admin/employees" class="btn btn-secondary">Back to Employees</a>
+    </div>
+    
+    ${message ? `<div class="alert alert-error">${message}</div>` : ''}
+    
+    <div class="bulk-section">
+        <h2>Bulk Delete Employees</h2>
+        <p class="warning-text">⚠️ Warning: This will permanently delete selected employees and all their related data (attendance, leave applications).</p>
+        
+        <form method="POST" action="/admin/bulk-delete" onsubmit="return confirmBulkDelete()">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()">
+                                Select All
+                            </th>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${employees.map(emp => `
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="selectedEmployees" value="${emp.id}" class="employee-checkbox">
+                                </td>
+                                <td>${emp.id}</td>
+                                <td>${emp.username}</td>
+                                <td>${emp.name}</td>
+                                <td>${emp.email || 'N/A'}</td>
+                                <td>${emp.department || 'N/A'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                
+                ${employees.length === 0 ? '<p class="no-data">No employees found.</p>' : ''}
+            </div>
+            
+            ${employees.length > 0 ? `
+                <div class="bulk-actions">
+                    <button type="submit" class="btn btn-danger">Delete Selected Employees</button>
+                    <span class="selected-count">Selected: <span id="selectedCount">0</span> employees</span>
+                </div>
+            ` : ''}
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleAllCheckboxes() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.employee-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkedBoxes = document.querySelectorAll('.employee-checkbox:checked');
+    document.getElementById('selectedCount').textContent = checkedBoxes.length;
+}
+
+function confirmBulkDelete() {
+    const checkedBoxes = document.querySelectorAll('.employee-checkbox:checked');
+    
+    if (checkedBoxes.length === 0) {
+        alert('Please select at least one employee to delete.');
+        return false;
+    }
+    
+    return confirm(\`Are you sure you want to delete \${checkedBoxes.length} employee(s)? This action cannot be undone and will delete all their attendance and leave records.\`);
+}
+
+// Add event listeners to checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.employee-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+    
+    updateSelectedCount();
+});
+</script>
+` }) %>

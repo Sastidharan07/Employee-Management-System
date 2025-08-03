@@ -1,0 +1,341 @@
+<% const title = 'My Profile' %>
+<%- include('../layout', { title, user, body: `
+<div class="profile-page">
+    <div class="page-header">
+        <h1>My Profile</h1>
+        <div class="profile-actions">
+            <a href="/user/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+    
+    <!-- Display Success/Error Messages -->
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        const success = urlParams.get('success');
+        
+        if (error) {
+            document.addEventListener('DOMContentLoaded', function() {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-error';
+                alertDiv.textContent = error;
+                document.querySelector('.profile-page').insertBefore(alertDiv, document.querySelector('.profile-content'));
+            });
+        }
+        
+        if (success) {
+            document.addEventListener('DOMContentLoaded', function() {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success';
+                alertDiv.textContent = success;
+                document.querySelector('.profile-page').insertBefore(alertDiv, document.querySelector('.profile-content'));
+            });
+        }
+    </script>
+    
+    <div class="profile-content">
+        <!-- Profile Overview -->
+        <div class="profile-overview">
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    ${userProfile.profile_image ? `
+                        <img src="/uploads/profiles/${userProfile.profile_image}" alt="${userProfile.name}" class="avatar-image">
+                    ` : `
+                        <div class="avatar-circle">
+                            ${userProfile.name.charAt(0).toUpperCase()}
+                        </div>
+                    `}
+                </div>
+                <div class="profile-info">
+                    <h2>${userProfile.name}</h2>
+                    <p class="profile-role">Employee</p>
+                    <p class="profile-department">${userProfile.department || 'No Department Assigned'}</p>
+                    <p class="profile-joined">Joined: ${new Date(userProfile.created_at).toLocaleDateString()}</p>
+                </div>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="profile-stats">
+                <div class="stat-item">
+                    <div class="stat-number">${attendanceSummary.total_days}</div>
+                    <div class="stat-label">Total Days</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number present">${attendanceSummary.present_days}</div>
+                    <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${attendanceSummary.total_days > 0 ? Math.round((attendanceSummary.present_days / attendanceSummary.total_days) * 100) : 0}%</div>
+                    <div class="stat-label">Attendance Rate</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${leaveSummary.total_applications}</div>
+                    <div class="stat-label">Leave Applications</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Profile Details and Edit Form -->
+        <div class="profile-details-grid">
+            <!-- Personal Information -->
+            <div class="profile-section">
+                <h3>Personal Information</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Employee ID:</label>
+                        <span>${userProfile.id}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Username:</label>
+                        <span>${userProfile.username}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Full Name:</label>
+                        <span>${userProfile.name}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Email:</label>
+                        <span>${userProfile.email || 'Not provided'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Department:</label>
+                        <span>${userProfile.department || 'Not assigned'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Member Since:</label>
+                        <span>${new Date(userProfile.created_at).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Leave Summary -->
+            <div class="profile-section">
+                <h3>Leave Summary</h3>
+                <div class="leave-stats-grid">
+                    <div class="leave-stat">
+                        <div class="leave-stat-number approved">${leaveSummary.approved_leaves}</div>
+                        <div class="leave-stat-label">Approved</div>
+                    </div>
+                    <div class="leave-stat">
+                        <div class="leave-stat-number pending">${leaveSummary.pending_leaves}</div>
+                        <div class="leave-stat-label">Pending</div>
+                    </div>
+                    <div class="leave-stat">
+                        <div class="leave-stat-number rejected">${leaveSummary.rejected_leaves}</div>
+                        <div class="leave-stat-label">Rejected</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Edit Profile Form -->
+        <div class="profile-edit-section">
+            <h3>Update Profile</h3>
+            <form method="POST" action="/user/update-profile" class="profile-form" enctype="multipart/form-data">
+                <div class="form-section">
+                    <h4>Profile Image</h4>
+                    <div class="image-upload-section">
+                        <div class="image-preview-container">
+                            <div class="image-preview" id="imagePreview">
+                                ${userProfile.profile_image ? `
+                                    <img src="/uploads/profiles/${userProfile.profile_image}" alt="Current Profile" class="preview-image">
+                                    <div class="image-overlay">
+                                        <span>Click to change</span>
+                                    </div>
+                                ` : `
+                                    <div class="placeholder-avatar">
+                                        <span>${userProfile.name.charAt(0).toUpperCase()}</span>
+                                        <p>Click to upload image</p>
+                                    </div>
+                                `}
+                            </div>
+                            <input type="file" id="profileImage" name="profileImage" accept="image/*" class="image-input">
+                        </div>
+                        <div class="image-actions">
+                            ${userProfile.profile_image ? `
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="removeImage" value="true">
+                                    Remove current image
+                                </label>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Full Name:</label>
+                        <input type="text" id="name" name="name" value="${userProfile.name}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" value="${userProfile.email || ''}">
+                    </div>
+                </div>
+                
+                <div class="password-section">
+                    <h4>Change Password (Optional)</h4>
+                    <p class="form-help">Leave password fields blank if you don't want to change your password</p>
+                    
+                    <div class="form-group">
+                        <label for="currentPassword">Current Password:</label>
+                        <input type="password" id="currentPassword" name="currentPassword" placeholder="Enter current password">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="newPassword">New Password:</label>
+                            <input type="password" id="newPassword" name="newPassword" placeholder="Enter new password" minlength="6">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm New Password:</label>
+                            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm new password">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Update Profile</button>
+                    <button type="reset" class="btn btn-secondary">Reset Form</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Account Information -->
+        <div class="account-info-section">
+            <h3>Account Information</h3>
+            <div class="account-info-grid">
+                <div class="account-info-item">
+                    <div class="info-icon">🔐</div>
+                    <div class="info-content">
+                        <h4>Account Security</h4>
+                        <p>Your password is securely encrypted. Only you can change it by providing your current password.</p>
+                    </div>
+                </div>
+                
+                <div class="account-info-item">
+                    <div class="info-icon">📊</div>
+                    <div class="info-content">
+                        <h4>Data Privacy</h4>
+                        <p>Your attendance and leave data is stored securely and only accessible by you and authorized administrators.</p>
+                    </div>
+                </div>
+                
+                <div class="account-info-item">
+                    <div class="info-icon">👤</div>
+                    <div class="info-content">
+                        <h4>Profile Updates</h4>
+                        <p>You can update your name, email address, and profile image. Username changes require administrator assistance.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Password confirmation validation
+document.addEventListener('DOMContentLoaded', function() {
+    const newPassword = document.getElementById('newPassword');
+    const confirmPassword = document.getElementById('confirmPassword');
+    const currentPassword = document.getElementById('currentPassword');
+    const imageInput = document.getElementById('profileImage');
+    const imagePreview = document.getElementById('imagePreview');
+    const removeImageCheckbox = document.querySelector('input[name="removeImage"]');
+    
+    function validatePasswords() {
+        if (newPassword.value && confirmPassword.value) {
+            if (newPassword.value !== confirmPassword.value) {
+                confirmPassword.setCustomValidity('Passwords do not match');
+            } else {
+                confirmPassword.setCustomValidity('');
+            }
+        }
+        
+        // If new password is entered, current password is required
+        if (newPassword.value && !currentPassword.value) {
+            currentPassword.setCustomValidity('Current password is required to set a new password');
+        } else {
+            currentPassword.setCustomValidity('');
+        }
+    }
+    
+    newPassword.addEventListener('input', validatePasswords);
+    confirmPassword.addEventListener('input', validatePasswords);
+    currentPassword.addEventListener('input', validatePasswords);
+    
+    // Image upload handling
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                e.target.value = '';
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                e.target.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.innerHTML = \`
+                    <img src="\${e.target.result}" alt="Profile Preview" class="preview-image">
+                    <div class="image-overlay">
+                        <span>New image selected</span>
+                    </div>
+                \`;
+                
+                // Uncheck remove image if new image is selected
+                if (removeImageCheckbox) {
+                    removeImageCheckbox.checked = false;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Handle remove image checkbox
+    if (removeImageCheckbox) {
+        removeImageCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                imagePreview.innerHTML = \`
+                    <div class="placeholder-avatar">
+                        <span>${userProfile.name.charAt(0).toUpperCase()}</span>
+                        <p>Image will be removed</p>
+                    </div>
+                \`;
+                imageInput.value = '';
+            } else {
+                // Restore original image
+                imagePreview.innerHTML = \`
+                    ${userProfile.profile_image ? `
+                        <img src="/uploads/profiles/${userProfile.profile_image}" alt="Current Profile" class="preview-image">
+                        <div class="image-overlay">
+                            <span>Click to change</span>
+                        </div>
+                    ` : `
+                        <div class="placeholder-avatar">
+                            <span>${userProfile.name.charAt(0).toUpperCase()}</span>
+                            <p>Click to upload image</p>
+                        </div>
+                    `}
+                \`;
+            }
+        });
+    }
+    
+    // Make the preview container clickable
+    imagePreview.addEventListener('click', function() {
+        imageInput.click();
+    });
+});
+</script>
+` }) %>

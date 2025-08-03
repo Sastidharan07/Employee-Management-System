@@ -1,0 +1,286 @@
+<% const title = 'Leave Management' %>
+<%- include('../layout', { title, user, body: `
+<div class="leave-page">
+    <h1>Leave Management</h1>
+    
+    <!-- Success/Error Messages -->
+    ${typeof error !== 'undefined' && error ? `
+        <div class="alert alert-error">
+            ${error}
+        </div>
+    ` : ''}
+    
+    ${typeof success !== 'undefined' && success ? `
+        <div class="alert alert-success">
+            ${success}
+        </div>
+    ` : ''}
+    
+    <div class="leave-form-section">
+        <h2>Apply for Leave</h2>
+        <form method="POST" action="/user/apply-leave" class="form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="startDate">Start Date: <span class="required">*</span></label>
+                    <input type="date" id="startDate" name="startDate" required min="${new Date().toISOString().split('T')[0]}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="endDate">End Date: <span class="required">*</span></label>
+                    <input type="date" id="endDate" name="endDate" required min="${new Date().toISOString().split('T')[0]}">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="reason">Reason for Leave: <span class="required">*</span></label>
+                <textarea id="reason" name="reason" rows="3" required placeholder="Please provide a brief reason for your leave request..." maxlength="500"></textarea>
+                <small class="form-help">Maximum 500 characters</small>
+            </div>
+            
+            <div id="duration-display" class="duration-info" style="display: none;">
+                <strong>Duration: <span id="duration-text"></span></strong>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Submit Leave Application</button>
+                <button type="reset" class="btn btn-secondary">Clear Form</button>
+            </div>
+        </form>
+    </div>
+    
+    <div class="leave-history-section">
+        <h2>Leave Application History</h2>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Leave Period</th>
+                        <th>Duration</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Applied On</th>
+                        <th>Admin Comment</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${applications.map(app => {
+                        const startDate = new Date(app.start_date);
+                        const endDate = new Date(app.end_date);
+                        const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                        const today = new Date();
+                        const isCurrentlyOnLeave = app.status === 'approved' && 
+                                                 startDate <= today && 
+                                                 endDate >= today && 
+                                                 (app.absence_status === 'on-leave' || app.absence_status === null);
+                        
+                        return `
+                        <tr class="application-row ${app.status}">
+                            <td>
+                                ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}
+                                ${isCurrentlyOnLeave ? '<br><small class="status-indicator on-leave">🏖️ Currently on leave</small>' : ''}
+                            </td>
+                            <td>${duration} day${duration > 1 ? 's' : ''}</td>
+                            <td title="${app.reason}">
+                                ${app.reason.length > 50 ? app.reason.substring(0, 50) + '...' : app.reason}
+                            </td>
+                            <td>
+                                <span class="status status-${app.status}">${app.status}</span>
+                                ${app.absence_status ? `<br><small class="status status-${app.absence_status}">${app.absence_status}</small>` : ''}
+                            </td>
+                            <td>${new Date(app.created_at).toLocaleDateString()}</td>
+                            <td>
+                                ${app.admin_comment ? `
+                                    <span title="${app.admin_comment}">
+                                        ${app.admin_comment.length > 30 ? app.admin_comment.substring(0, 30) + '...' : app.admin_comment}
+                                    </span>
+                                ` : 'N/A'}
+                            </td>
+                            <td>
+                                ${isCurrentlyOnLeave ? `
+                                    <form method="POST" action="/user/mark-return" style="display: inline;">
+                                        <input type="hidden" name="applicationId" value="${app.id}">
+                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Are you sure you want to mark your return from leave?')">
+                                            🏠 Mark Return
+                                        </button>
+                                    </form>
+                                ` : app.absence_status === 'returned' ? `
+                                    <span class="text-success">✓ Returned</span>
+                                ` : app.status === 'pending' ? `
+                                    <span class="text-warning">⏳ Pending</span>
+                                ` : app.status === 'rejected' ? `
+                                    <span class="text-danger">✗ Rejected</span>
+                                ` : app.status === 'approved' && endDate < today ? `
+                                    <span class="text-info">📅 Completed</span>
+                                ` : ''}
+                            </td>
+                        </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+            
+            ${applications.length === 0 ? '<p class="no-data">No leave applications found. <a href="#" onclick="document.getElementById(\'startDate\').focus()">Apply for your first leave</a>.</p>' : ''}
+        </div>
+    </div>
+</div>
+
+<style>
+.application-row.pending {
+    background-color: #fff3cd;
+}
+
+.application-row.approved {
+    background-color: #d4edda;
+}
+
+.application-row.rejected {
+    background-color: #f8d7da;
+}
+
+.status-indicator.on-leave {
+    color: #856404;
+    font-weight: bold;
+}
+
+.duration-info {
+    padding: 1rem;
+    background: #e9ecef;
+    border-radius: 4px;
+    margin: 1rem 0;
+    color: #495057;
+}
+
+.required {
+    color: #dc3545;
+}
+
+.form-help {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.alert {
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.text-success {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.text-warning {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+.text-danger {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.text-info {
+    color: #17a2b8;
+    font-weight: bold;
+}
+</style>
+
+<script>
+// Ensure end date is not before start date
+document.getElementById('startDate').addEventListener('change', function() {
+    const startDate = this.value;
+    const endDateInput = document.getElementById('endDate');
+    endDateInput.min = startDate;
+    
+    if (endDateInput.value && endDateInput.value < startDate) {
+        endDateInput.value = startDate;
+    }
+    updateDuration();
+});
+
+document.getElementById('endDate').addEventListener('change', updateDuration);
+
+// Calculate and display duration
+function updateDuration() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        
+        const durationDisplay = document.getElementById('duration-display');
+        const durationText = document.getElementById('duration-text');
+        
+        if (duration > 0) {
+            durationText.textContent = \`\${duration} day\${duration > 1 ? 's' : ''}\`;
+            durationDisplay.style.display = 'block';
+        } else {
+            durationDisplay.style.display = 'none';
+        }
+    } else {
+        document.getElementById('duration-display').style.display = 'none';
+    }
+}
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const reason = document.getElementById('reason').value.trim();
+    
+    if (!startDate || !endDate || !reason) {
+        e.preventDefault();
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+        e.preventDefault();
+        alert('End date must be after start date.');
+        return;
+    }
+    
+    if (new Date(startDate) < new Date()) {
+        e.preventDefault();
+        alert('Start date cannot be in the past.');
+        return;
+    }
+    
+    if (reason.length > 500) {
+        e.preventDefault();
+        alert('Reason must be 500 characters or less.');
+        return;
+    }
+});
+
+// Auto-hide alerts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            setTimeout(() => {
+                alert.remove();
+            }, 300);
+        }, 5000);
+    });
+});
+</script>
+` }) %>
